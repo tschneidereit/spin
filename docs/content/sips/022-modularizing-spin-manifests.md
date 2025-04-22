@@ -4,7 +4,7 @@ date = "2025-03-31T12:00:00Z"
 
 ---
 
-Summary: Support moving component definit ions into separate Spin.toml files, similar to Cargo workspaces.
+Summary: Support moving component definitions into separate `spin.toml` files, similar to Cargo workspaces.
 
 Owner(s): [till@fermyon.com](mailto:till@fermyon.com)
 
