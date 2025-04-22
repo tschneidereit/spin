@@ -14,7 +14,7 @@ Created: March 31, 2025
 
 As Spin applications grow in complexity, their `spin.toml` manifest files can become large and unwieldy. Large applications with many triggers and components can result in manifest files that span hundreds of lines, making them difficult to navigate, understand, and maintain. It’s very hard to keep related settings grouped, making the application architecture harder to follow.
 
-The current monolithic nature of `spin.toml` files also means that tend to be very conservative when it comes to adding additional features that’d require additions to the manifest. This proposal is directly motivated by the desire to add features that’d make `spin.toml` files in their current form substantially more unwieldy. Those will be described in separate proposals.
+The current monolithic nature of `spin.toml` files also means that they tend to be very conservative when it comes to adding additional features that’d require additions to the manifest. This proposal is directly motivated by the desire to add features that’d make `spin.toml` files in their current form substantially more unwieldy. Those will be described in separate proposals.
 
 Besides specific current goals, moving to a modular manifest format will bring Spin into alignment with related other formats, such as Rust’s [Cargo.toml](https://doc.rust-lang.org/cargo/reference/workspaces.html) or npm’s [package.json](https://docs.npmjs.com/cli/v11/using-npm/workspaces).
 
