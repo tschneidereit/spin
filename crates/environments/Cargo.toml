@@ -26,9 +26,9 @@ spin-serde = { path = "../serde" }
 toml = { workspace = true }
 tokio = { version = "1.23", features = ["fs"] }
 tracing = { workspace = true }
-wac-parser = "0.6.0"
-wac-resolver = "0.6.0"
-wac-types = "0.6.0"
+wac-parser = "0.7.0"
+wac-resolver = "0.7.0"
+wac-types = "0.7.0"
 wasm-pkg-client = { workspace = true }
 wasmparser = { workspace = true }
 wit-component = { workspace = true }
@@ -36,7 +36,7 @@ wit-parser = { workspace = true }
 
 [dev-dependencies]
 wit-component = { workspace = true, features = ["dummy-module"] }
-wit-encoder = "0.229"
+wit-encoder = "0.235"
 
 [lints]
 workspace = true
