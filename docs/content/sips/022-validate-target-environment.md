@@ -70,5 +70,6 @@ The user can bypass the validation by using the `--skip-target-checks` flag with
 
 ## Future work
 
+-   **Per-component target environments:** We could allow overriding the `targets` field on a per-component basis. This would be useful for applications that end up being deployed into multiple environments in a modular fashion.
 -   **Tooling for environment authors:** We could provide tools to help authors create and publish environment definition files.
 -   **Using environment definitions for bindings generation:** With this SIP, we propose to use target worlds in a validation predicate. Building on this, we could also use them to better support authors in targeting the right environment to begin with.
