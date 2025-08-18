@@ -1,6 +1,6 @@
 use std::io::IsTerminal;
 use std::net::SocketAddr;
-
+use std::time::Duration;
 use anyhow::{anyhow, Context, Result};
 use futures::TryFutureExt;
 use http::{HeaderName, HeaderValue};
@@ -15,7 +15,6 @@ use tracing::{instrument, Instrument, Level};
 use wasmtime_wasi::p2::IoView;
 use wasmtime_wasi_http::bindings::http::types::Scheme;
 use wasmtime_wasi_http::{bindings::Proxy, body::HyperIncomingBody as Body, WasiHttpView};
-
 use crate::{headers::prepare_request_headers, server::HttpExecutor, TriggerInstanceBuilder};
 
 /// An [`HttpExecutor`] that uses the `wasi:http/incoming-handler` interface.
@@ -35,6 +34,11 @@ impl HttpExecutor for WasiHttpExecutor<'_> {
         let component_id = route_match.component_id();
 
         tracing::trace!("Executing request using the Wasi executor for component {component_id}");
+        let metrics_prefix = format!(
+            "{} request to {} handled. Component: {component_id}",
+            req.method(),
+            req.uri(),
+        );
 
         let (instance, mut store) = instance_builder.instantiate(()).await?;
 
@@ -95,6 +99,7 @@ impl HttpExecutor for WasiHttpExecutor<'_> {
         };
 
         let span = tracing::debug_span!("execute_wasi");
+        let start = std::time::Instant::now();
         let handle = task::spawn(
             async move {
                 let result = match handler {
@@ -120,6 +125,13 @@ impl HttpExecutor for WasiHttpExecutor<'_> {
                             .await
                     }
                 };
+
+                tracing::info!(
+                    "{metrics_prefix}, Peak memory usage: {}, CPU time: {}, Wall-clock time: {}",
+                    format_bytes(store.data().core_state().memory_consumed()),
+                    format_duration(&store.data().core_state().cpu_time_elapsed),
+                    format_duration(&start.elapsed())
+                );
 
                 tracing::trace!(
                     "wasi-http memory consumed: {}",
@@ -165,5 +177,28 @@ impl HttpExecutor for WasiHttpExecutor<'_> {
                 ))
             }
         }
+    }
+}
+
+fn format_duration(duration: &Duration) -> String {
+    if duration.as_secs() > 0 {
+        format!("{:.2}s", duration.as_secs_f64())
+    } else if duration.as_millis() >= 1000 {
+        format!("{}ms", duration.as_millis())
+    } else {
+        format!("{}µs", duration.as_micros())
+    }
+}
+
+fn format_bytes(bytes: u64) -> String {
+    const KB: f64 = 1024.0;
+    const MB: f64 = KB * 1024.0;
+    const GB: f64 = MB * 1024.0;
+
+    match bytes as f64 {
+        b if b < KB => format!("{}B", bytes),
+        b if b < MB => format!("{:.1}KB", b / KB),
+        b if b < GB => format!("{:.1}MB", b / MB),
+        b => format!("{:.1}GB", b / GB),
     }
 }

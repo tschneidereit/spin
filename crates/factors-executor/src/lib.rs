@@ -1,8 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
-
+use std::time::Instant;
 use anyhow::Context;
 use spin_app::{App, AppComponent};
-use spin_core::{async_trait, Component};
+use spin_core::{async_trait, Component, State};
+use spin_core::wasmtime::CallHook;
 use spin_factors::{
     AsInstanceState, ConfiguredApp, Factor, HasInstanceBuilder, RuntimeFactors,
     RuntimeFactorsInstanceState,
@@ -249,8 +250,34 @@ impl<T: RuntimeFactors, U: Send> FactorsInstanceBuilder<'_, T, U> {
             executor: executor_instance_state,
         };
         let mut store = self.store_builder.build(instance_state)?;
+        #[cfg(feature = "call-hook")]
+        store.as_mut()
+            .call_hook(|mut store, hook| CpuTimeCallHook.handle_call_event(store.data_mut().core_state_mut(), hook));
         let instance = self.instance_pre.instantiate_async(&mut store).await?;
         Ok((instance, store))
+    }
+}
+
+// Tracks CPU time used by a Wasm guest.
+struct CpuTimeCallHook;
+
+impl CpuTimeCallHook {
+    fn handle_call_event(
+        &self,
+        state: &mut State,
+        ch: CallHook,
+    ) -> anyhow::Result<()> {
+        match ch {
+            CallHook::CallingWasm | CallHook::ReturningFromHost => {
+                debug_assert!(state.cpu_time_last_entry.is_none());
+                state.cpu_time_last_entry = Some(Instant::now());
+            }
+            CallHook::ReturningFromWasm | CallHook::CallingHost => {
+                let elapsed = state.cpu_time_last_entry.take().unwrap().elapsed();
+                state.cpu_time_elapsed += elapsed;
+            }
+        }
+        Ok(())
     }
 }
 

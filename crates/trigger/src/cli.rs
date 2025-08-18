@@ -1,12 +1,13 @@
 mod initial_kv_setter;
 mod launch_metadata;
 mod max_instance_memory;
+mod memory_tracker;
 mod sqlite_statements;
 mod stdio;
 mod summary;
 
 use std::path::PathBuf;
-use std::{future::Future, sync::Arc};
+use std::{future::Future, sync::Arc, time::Instant};
 
 use anyhow::{Context, Result};
 use clap::{Args, IntoApp, Parser};
@@ -21,6 +22,7 @@ use crate::{loader::ComponentLoader as ComponentLoaderImpl, Trigger, TriggerApp}
 pub use initial_kv_setter::InitialKvSetterHook;
 pub use launch_metadata::LaunchMetadata;
 pub use max_instance_memory::MaxInstanceMemoryHook;
+pub use memory_tracker::{MemoryTracker, MemoryTrackerHook};
 pub use sqlite_statements::SqlStatementExecutorHook;
 use stdio::FollowComponents;
 pub use stdio::StdioLoggingExecutorHooks;
@@ -242,9 +244,12 @@ impl<T: Trigger<B::Factors>, B: RuntimeFactorsBuilder> FactorsTriggerCommand<T, 
             )
             .await?;
 
+        // Record start time for CPU time measurement
+        let start_time = Instant::now();
+
         let (abortable, abort_handle) = futures::future::abortable(run_fut);
         ctrlc::set_handler(move || abort_handle.abort())?;
-        match abortable.await {
+        let result = match abortable.await {
             Ok(Ok(())) => {
                 tracing::info!("Trigger executor shut down: exiting");
                 Ok(())
@@ -257,7 +262,21 @@ impl<T: Trigger<B::Factors>, B: RuntimeFactorsBuilder> FactorsTriggerCommand<T, 
                 tracing::info!("User requested shutdown: exiting");
                 Ok(())
             }
-        }
+        };
+
+        // Log execution statistics
+        let cpu_time = start_time.elapsed();
+        let peak_memory = MemoryTracker::global().get_peak_memory();
+        let instance_count = MemoryTracker::global().get_instance_count();
+
+        eprintln!(
+            "Execution completed - CPU time: {:?}, Peak memory usage: {} bytes ({} instances created)",
+            cpu_time,
+            peak_memory,
+            instance_count
+        );
+
+        result
     }
 
     fn follow_components(&self) -> FollowComponents {

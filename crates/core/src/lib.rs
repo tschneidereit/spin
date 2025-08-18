@@ -12,7 +12,7 @@ mod store;
 
 use std::sync::OnceLock;
 use std::{path::PathBuf, time::Duration};
-
+use std::time::Instant;
 use anyhow::Result;
 use tracing::instrument;
 use wasmtime::{InstanceAllocationStrategy, PoolingAllocationConfig};
@@ -24,7 +24,6 @@ pub use wasmtime::{
     component::{Component, Instance, InstancePre, Linker},
     Instance as ModuleInstance, Module, Trap,
 };
-
 pub use store::{AsState, Store, StoreBuilder};
 
 /// The default [`EngineBuilder::epoch_tick_interval`].
@@ -253,6 +252,10 @@ fn use_pooling_allocator_by_default() -> bool {
 #[derive(Default)]
 pub struct State {
     store_limits: limits::StoreLimitsAsync,
+    /// The last time guest code started running in this instance.
+    pub cpu_time_last_entry: Option<Instant>,
+    /// The total CPU time elapsed actively running guest code in this instance.
+    pub cpu_time_elapsed: Duration,
 }
 
 impl State {
